@@ -1,3 +1,5 @@
 .vs/
 _Intermediate/
 _Output/
+
+*.raw
