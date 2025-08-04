@@ -1,5 +1,6 @@
 .vs/
 _Intermediate/
 _Output/
+Dependency/
 
 *.raw

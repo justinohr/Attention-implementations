@@ -48,17 +48,21 @@ int main()
 		return EXIT_FAILURE;
 	}
 
-	multi_head_attn.LoadWeights(qkv_proj, qkv_bias, out_proj, out_bias);
+	multi_head_attn.load_weights(qkv_proj, qkv_bias, out_proj, out_bias);
+	clock_t start_time = clock();
 	multi_head_attn.inference(input_vectors, output_vectors, number_of_tokens);
+	clock_t end_time = clock();
 
 	if (isEqual(gt_vectors, output_vectors, number_of_tokens * embedding_size))
 	{
-		printf("PASS");
+		printf("PASS\n");
+		printf("Elapsed time: %lf seconds", (double)(end_time - start_time) / CLOCKS_PER_SEC);
 	}
 	else
 	{
 		printf("FAIL");
 	}
+
 
 	delete[] qkv_proj;
 	delete[] qkv_bias;

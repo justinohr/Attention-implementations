@@ -2,6 +2,7 @@
 #include "Attentions.h"
 #include <fstream>
 #include <math.h>
+#include <ctime>
 
 #pragma comment(lib, "Attentions.lib")
 
