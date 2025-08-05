@@ -63,15 +63,34 @@ bool nn::MultiHeadAttention::inference(float* input_vectors, float* output_vecto
 	cv::Mat Q, K, V;
 	cv::Mat x(number_of_tokens, m_nEmbeddingSize, CV_32F, input_vectors);
 
-	if (!linear(x, m_q_proj, m_q_bias, Q))
+	std::atomic<bool> success = true;
+	
+#pragma omp parallel sections
 	{
-		return false;
+#pragma omp section
+		{
+			if (!linear(x, m_q_proj, m_q_bias, Q))
+			{
+				success = false;
+			}
+		}
+#pragma omp section
+		{
+			if (!linear(x, m_k_proj, m_k_bias, K))
+			{
+				success = false;
+			}
+		}
+#pragma omp section
+		{
+			if (!linear(x, m_v_proj, m_v_bias, V))
+			{
+				success = false;
+			}
+		}
 	}
-	if (!linear(x, m_k_proj, m_k_bias, K))
-	{
-		return false;
-	}
-	if (!linear(x, m_v_proj, m_v_bias, V))
+	
+	if (!success)
 	{
 		return false;
 	}
