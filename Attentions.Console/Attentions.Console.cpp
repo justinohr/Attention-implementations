@@ -5,9 +5,8 @@ int main()
 	int number_of_tokens = 1000;
 	int embedding_size = 768;
 	int num_heads = 64;
-	bool causal_masking = false;
 
-	nn::MultiHeadAttention multi_head_attn(embedding_size, num_heads, causal_masking);
+	nn::MultiHeadAttention multi_head_attn(embedding_size, num_heads);
 
 	float* qkv_proj = new float[3 * embedding_size * embedding_size];
 	float* qkv_bias = new float[3 * embedding_size];
@@ -17,6 +16,9 @@ int main()
 	float* input_vectors = new float[number_of_tokens * embedding_size];
 	float* output_vectors = new float[number_of_tokens * embedding_size];
 	float* gt_vectors = new float[number_of_tokens * embedding_size];
+	float* causal_output_vectors = new float[number_of_tokens * embedding_size];
+	float* causal_gt_vectors = new float[number_of_tokens * embedding_size];
+	
 
 	if (!ReadBinaryFile("qkv_proj.raw", (unsigned char*)qkv_proj, sizeof(float) * 3 * embedding_size * embedding_size))
 	{
@@ -48,12 +50,19 @@ int main()
 		return EXIT_FAILURE;
 	}
 
+	if (!ReadBinaryFile("causal_output.raw", (unsigned char*)causal_gt_vectors, sizeof(float) * number_of_tokens * embedding_size))
+	{
+		return EXIT_FAILURE;
+	}
+
 	multi_head_attn.load_weights(qkv_proj, qkv_bias, out_proj, out_bias);
 	clock_t start_time = clock();
 	multi_head_attn.inference(input_vectors, output_vectors, number_of_tokens);
 	clock_t end_time = clock();
 
-	if (isEqual(gt_vectors, output_vectors, number_of_tokens * embedding_size))
+	multi_head_attn.inference(input_vectors, causal_output_vectors, number_of_tokens, true);
+
+	if (isEqual(gt_vectors, output_vectors, number_of_tokens * embedding_size) && isEqual(causal_gt_vectors, causal_output_vectors, number_of_tokens * embedding_size))
 	{
 		printf("PASS\n");
 		printf("Elapsed time: %lf seconds", (double)(end_time - start_time) / CLOCKS_PER_SEC);

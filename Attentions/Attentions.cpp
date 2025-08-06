@@ -1,12 +1,11 @@
 #include "pch.h"
 #include "Attentions.h"
 
-nn::MultiHeadAttention::MultiHeadAttention(int embedding_size, int num_heads, bool causal_masking)
+nn::MultiHeadAttention::MultiHeadAttention(int embedding_size, int num_heads)
 {
 	m_nEmbeddingSize = embedding_size;
 	m_nNumHeads = num_heads;
 	m_nHeadSize = embedding_size / num_heads;
-	m_bCausalMasking = causal_masking;
 
 }
 
@@ -57,8 +56,22 @@ bool nn::MultiHeadAttention::linear(const cv::Mat& input, const cv::Mat& proj, c
 	return true;
 }
 
+void nn::MultiHeadAttention::compute_causal_mask(cv::Mat& output, cv::Size sz)
+{
+	output = cv::Mat::zeros(sz, CV_8U);
+	for (int r = 0; r < sz.height; ++r)
+	{
+		for (int c = 0; c < sz.width; ++c)
+		{
+			if (c > r)
+			{
+				output.at<uchar>(r, c) = 255;
+			}
+		}
+	}
+}
 
-bool nn::MultiHeadAttention::inference(float* input_vectors, float* output_vectors, int number_of_tokens)
+bool nn::MultiHeadAttention::inference(float* input_vectors, float* output_vectors, int number_of_tokens, bool apply_causal_mask)
 {
 	cv::Mat Q, K, V;
 	cv::Mat x(number_of_tokens, m_nEmbeddingSize, CV_32F, input_vectors);
@@ -106,6 +119,13 @@ bool nn::MultiHeadAttention::inference(float* input_vectors, float* output_vecto
 			* K_t(cv::Rect(0, head_idx * m_nHeadSize, number_of_tokens, m_nHeadSize));
 
 		logit /= sqrt(m_nHeadSize);
+
+		if (apply_causal_mask)
+		{
+			cv::Mat causal_mask;
+			compute_causal_mask(causal_mask, logit.size());
+			logit.setTo(VERY_SMALL_NEGATIVE_FLOAT, causal_mask);
+		}
 
 		cv::Mat exp_logit;
 		cv::Mat softmax_output;
