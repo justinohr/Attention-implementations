@@ -79,6 +79,9 @@ int main()
 
 	delete[] input_vectors;
 	delete[] output_vectors;
+	delete[] gt_vectors;
+	delete[] causal_output_vectors;
+	delete[] causal_gt_vectors;
 
 	int num_kv_heads = 2;
 	int num_groups = num_heads / num_kv_heads;
@@ -87,6 +90,8 @@ int main()
 	input_vectors = new float[number_of_tokens * embedding_size];
 	output_vectors = new float[number_of_tokens * embedding_size];
 	gt_vectors = new float[number_of_tokens * embedding_size];
+	causal_output_vectors = new float[number_of_tokens * embedding_size];
+	causal_gt_vectors = new float[number_of_tokens * embedding_size];
 
 	float* q_proj = new float[number_of_tokens * embedding_size];
 	float* k_proj = new float[number_of_tokens * num_kv_heads * head_size];
@@ -139,6 +144,10 @@ int main()
 	{
 		return EXIT_FAILURE;
 	}
+	if (!ReadBinaryFile("causal_output_gqa.raw", (unsigned char*)causal_gt_vectors, sizeof(float) * number_of_tokens * embedding_size))
+	{
+		return EXIT_FAILURE;
+	}
 
 	nn::GroupedQueryAttention grouped_query_attn(embedding_size, num_heads, num_kv_heads);
 
@@ -147,7 +156,10 @@ int main()
 	grouped_query_attn.inference(input_vectors, output_vectors, number_of_tokens);
 	end_time = clock();
 
-	if (isEqual(gt_vectors, output_vectors, number_of_tokens * embedding_size))
+	grouped_query_attn.inference(input_vectors, causal_output_vectors, number_of_tokens, true);
+
+
+	if (isEqual(gt_vectors, output_vectors, number_of_tokens * embedding_size) && isEqual(causal_gt_vectors, causal_output_vectors, number_of_tokens * embedding_size))
 	{
 		printf("GroupedQueryAttention test: PASS\n");
 		printf("Elapsed time: %lf seconds\n\n", (double)(end_time - start_time) / CLOCKS_PER_SEC);
@@ -160,6 +172,8 @@ int main()
 	delete[] input_vectors;
 	delete[] output_vectors;
 	delete[] gt_vectors;
+	delete[] causal_output_vectors;
+	delete[] causal_gt_vectors;
 
 	delete[] q_proj;
 	delete[] k_proj;
